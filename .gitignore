@@ -1,0 +1,13 @@
+# Geometries generees par generate_tetra_mesh.py (sortie par defaut dans examples/)
+examples/
+*_jitter.mesh3D
+out.mesh3D
+
+# Images exportees par view.py (--save)
+*.png
+
+# Caches Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
