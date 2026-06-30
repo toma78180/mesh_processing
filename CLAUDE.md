@@ -90,17 +90,30 @@ tetra→hexa chain): a **cut-cell** method that grids `[-R2,R2]³` into cubes of
 side `c = 2·R2/N`, keeps the regular interior cells verbatim, and clips only the
 thin shell of cubes that straddle the R1 interface (split into milieu 1 / milieu
 2) or the R2 boundary (kept inside, outside dropped). Each straddling cube is cut
-by **a single plane** that approximates the sphere locally (a secant plane fitted
-through the cube's edge–sphere intersections, with radial normal); clipping a
-cube by one plane yields a **single planar cap** (`_cap_face`), so every cut cell
-stays **convex** and the interface face passes G8. The trade-off: each cube has
-its *own* cut plane, so cut points are NOT shared between neighbours — the mesh is
-only *approximately* conformal along the interface (small gaps ~ the sphere's sag
-over one cube; this shows up as extra boundary faces, still valid under G4). Grid
-corners stay shared, so the regular core is exactly conformal. A cube straddling
-*both* spheres at once raises an error (use a larger N). NOTE: `nm.cell_volume`
-assumes triangular faces, so it under-reports volume for these polygonal cells —
-fan-triangulate each face to measure volume.
+**by the sphere itself** (`_clip_cube_sphere`): the cut vertices are the true
+edge↔sphere intersections, deduplicated **per grid edge** (key `("sph", radius,
+frozenset(corner-pair))`) so neighbouring cubes share them — the interface is
+therefore **exactly conformal** (the old "extra boundary faces from per-cube cut
+planes" trade-off is gone; the interface faces are genuine interior faces). A grid
+corner lying *on* the sphere (within `tol`, common when R is a multiple of the
+grid step) is kept by both pieces and treated as a cap vertex; `counts` classifies
+corners with a tolerance `eta` so such a corner does not by itself trigger a
+zero-volume cut. The cut vertices of one cube are **not coplanar** (the sphere
+bulges), so the cap is **triangulated** (`_cap_faces`): a fan from the ring's
+lowest-index vertex, no added point, p vertices → p−2 triangles. The fan is
+anchored canonically so both half-cells of an R1 cube emit identical triangles →
+shared interior cap. Each triangle is planar (G8). Trade-off: cells are **no longer
+guaranteed convex** — on the shell side (R1<r<R2) the sphere bulges inward and
+cells can be slightly `rentrante` (~20–25% of cells; each only mildly reentrant by
+the sphere's sag over one cube). `view.py coupe` assumes convex cells, so its
+cross-sections of shell cells may be slightly off. `_fit_cut_plane` /
+`_half_volume_below` survive only as the **eps volume estimate** (a local secant
+plane); the real cut no longer uses them. A cube straddling *both* spheres at once
+raises an error (use a larger N). NOTE: `nm.cell_volume` only uses each face's
+first 3 nodes, so it under-reports volume for the polygonal **side** faces (the
+caps are now triangles) — fan-triangulate every face to measure volume. The
+faceted caps are inscribed in the sphere, so measured volume undershoots the
+analytic ball and converges as N grows.
 
 File extensions are inconsistent across docstrings (`.geo`, `.msh3D`,
 `.mesh3D`) but the format is identical — committed data files use `.mesh3D`.
