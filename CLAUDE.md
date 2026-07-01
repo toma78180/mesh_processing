@@ -94,22 +94,31 @@ thin shell of cubes that straddle the R1 interface (split into milieu 1 / milieu
 edge↔sphere intersections, deduplicated **per grid edge** (key `("sph", radius,
 frozenset(corner-pair))`) so neighbouring cubes share them — the interface is
 therefore **exactly conformal** (the old "extra boundary faces from per-cube cut
-planes" trade-off is gone; the interface faces are genuine interior faces). A grid
-corner lying *on* the sphere (within `tol`, common when R is a multiple of the
-grid step) is kept by both pieces and treated as a cap vertex; `counts` classifies
-corners with a tolerance `eta` so such a corner does not by itself trigger a
-zero-volume cut. The cut vertices of one cube are **not coplanar** (the sphere
-bulges), so the cap is **triangulated** (`_cap_faces`): a fan from the ring's
-lowest-index vertex, no added point, p vertices → p−2 triangles. The fan is
-anchored canonically so both half-cells of an R1 cube emit identical triangles →
-shared interior cap. Each triangle is planar (G8). Trade-off: cells are **no longer
-guaranteed convex** — on the shell side (R1<r<R2) the sphere bulges inward and
-cells can be slightly `rentrante` (~20–25% of cells; each only mildly reentrant by
-the sphere's sag over one cube). `view.py coupe` assumes convex cells, so its
-cross-sections of shell cells may be slightly off. `_fit_cut_plane` /
-`_half_volume_below` survive only as the **eps volume estimate** (a local secant
-plane); the real cut no longer uses them. A cube straddling *both* spheres at once
-raises an error (use a larger N). NOTE: `nm.cell_volume` only uses each face's
+planes" trade-off is gone; the interface faces are genuine interior faces). The cut
+vertices of one cube are **not coplanar** (the sphere bulges), so the cap is
+**triangulated** (`_cap_faces`): a fan, no added point, p vertices → p−2 triangles,
+anchored canonically (lowest-index *non-`on_ids`* vertex) so both half-cells of an
+R1 cube emit identical triangles → shared interior cap, and so no triangle lies
+flat on a cube wall (that would fold the cell). Each triangle is planar (G8).
+
+**eps = per-corner snapping** (`_clip_cube_sphere`): each grid corner is classified
+DEDANS / DEHORS / **SUR** the interface — SUR when its radial distance to the
+sphere ≤ `band = max(eps·c, tol)`. A SUR corner sits exactly on the interface
+(shared by both pieces, a cap vertex via `on_ids`); its edges carry no separate
+cut. Only strictly-IN↔strictly-OUT edges get a genuine cut. This decision is
+**per corner** (its radius only) → identical across neighbouring cubes *and* across
+a corner's three edges, so a corner is never "snapped on one edge, sharp cut on
+another" — that inconsistency is what produced folds and collinear faces with the
+earlier per-edge snapping. Per-corner classification + the genuine-vertex fan apex
+make the mesh **valid (validate.py) at every eps in [0, 0.5]**; eps just trades
+interface fidelity for fewer/larger cells (a degenerate sliver whose cap is fully
+on the grid is dropped/filled — see `clip_piece`, and `_drop_orphan_points` cleans
+nodes left by dropped pieces). eps=0 (band=tol) keeps only exactly-on corners as
+SUR → maximal resolution. Trade-off: cells are **not guaranteed convex** — on the
+shell side (R1<r<R2) the sphere bulges inward so cells can be slightly `rentrante`;
+`view.py coupe` assumes convex cells, so its shell cross-sections may be slightly
+off. A cube straddling *both* spheres at once raises an error (use a larger N).
+NOTE: `nm.cell_volume` only uses each face's
 first 3 nodes, so it under-reports volume for the polygonal **side** faces (the
 caps are now triangles) — fan-triangulate every face to measure volume. The
 faceted caps are inscribed in the sphere, so measured volume undershoots the
